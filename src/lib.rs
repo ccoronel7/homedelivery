@@ -1,11 +1,11 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{env, near_bindgen, AccountId, PanicOnDefault, Balance};
+use near_sdk::{env, near_bindgen, AccountId, Balance};
 use near_sdk::collections::{ UnorderedMap};
 //use near_sdk::json_types::{U128};
 use serde::Serialize;
 use serde::Deserialize;
 use std::collections::HashMap;
-use near_sdk::json_types::ValidAccountId;
+// use near_sdk::json_types::ValidAccountId;
 //use near_sdk::env::is_valid_account_id;
 
 
@@ -31,6 +31,19 @@ pub struct StoreJson {
     wallet: String,
     logo: String,
 }
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+//structs for Menu
+pub struct MenuObject {
+    id: i128,
+    user_id:AccountId,
+    name: String,
+    description: String,
+    category:String,
+    price: Balance,
+    img: String,
+
+}
 //structs for categories
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -43,11 +56,14 @@ pub struct CategoriesJson {
     id: i128,
 	name: String,
 }
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Contract {
     stores: UnorderedMap<AccountId, StoreObject>,
+    menus: UnorderedMap<AccountId, MenuObject>,
     categories: Vec<CategoriesJson>,
+    menu_id: i128,
 }
 
 /// Initializing deafult impl
@@ -57,6 +73,8 @@ impl Default for Contract {
         Self {
             stores: UnorderedMap::new(b"s".to_vec()),
             categories: Vec::new(),
+            menus: UnorderedMap:: new(b"s".to_vec()),
+            menu_id: 0,
         }
     }
 }
@@ -114,7 +132,6 @@ pub fn put_store(&mut self,
 }
 pub fn get_store(&self, user_id: AccountId) -> StoreObject {
     let store = self.stores.get(&user_id).expect("Store does not exist");
-
     StoreObject {
         name: store.name,
         address: store.address,
@@ -122,6 +139,30 @@ pub fn get_store(&self, user_id: AccountId) -> StoreObject {
         wallet: store.wallet,
         logo: store.logo,
     }
+}
+
+// funtions for menus
+pub fn set_menu(&mut self,
+    user_id:AccountId,
+    name: String,
+    description: String,
+    category: String,
+    price: Balance,
+    img: String,
+) -> MenuObject {
+    self.menu_id += 1;
+    let data = MenuObject {
+        id: self.menu_id,
+        user_id: user_id.to_string(),
+        name: name.to_string(),
+        description: description.to_string(),
+        category: category.to_string(),
+        price: price,
+        img: img.to_string(),
+    };
+    self.menus.insert(&env::signer_account_id(), &data);
+    env::log(b"Menu Created");
+    data
 }
 
 // functions for categories
