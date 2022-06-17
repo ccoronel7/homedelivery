@@ -142,7 +142,7 @@ pub fn get_store(&self, user_id: AccountId) -> StoreObject {
 }
 
 // funtions for get all stores
-pub fn get_all_stores() -> StoreObject {
+pub fn get_all_stores(&self) -> StoreObject {
     let store = self.stores.iter().map(|(_key, value)| value.clone()).collect();
 }
 
