@@ -1,7 +1,7 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{env, near_bindgen, AccountId, Balance};
 use near_sdk::collections::{ UnorderedMap};
-//use near_sdk::json_types::{U128};
+use near_sdk::json_types::{U128};
 use serde::Serialize;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -35,14 +35,19 @@ pub struct StoreJson {
 #[serde(crate = "near_sdk::serde")]
 //structs for Menu
 pub struct MenuObject {
+    id_tienda: AccountId,
+    platillos: Vec<PlatilloObject>,
+}
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+//structs for Menu
+pub struct PlatilloObject {
     id: i128,
-    user_id:AccountId,
     name: String,
     description: String,
     category:String,
     price: Balance,
     img: String,
-
 }
 //structs for categories
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
@@ -61,9 +66,9 @@ pub struct CategoriesJson {
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Contract {
     stores: UnorderedMap<AccountId, StoreObject>,
-    menus: UnorderedMap<AccountId, MenuObject>,
+    menus: Vec<MenuObject>,
     categories: Vec<CategoriesJson>,
-    menu_id: i128,
+    platillo_id: i128,
 }
 
 /// Initializing deafult impl
@@ -73,8 +78,8 @@ impl Default for Contract {
         Self {
             stores: UnorderedMap::new(b"s".to_vec()),
             categories: Vec::new(),
-            menus: UnorderedMap:: new(b"s".to_vec()),
-            menu_id: 0,
+            menus: Vec::new(),
+            platillo_id: 0,
         }
     }
 }
@@ -102,6 +107,12 @@ pub fn set_store(&mut self,
         logo: logo,
     };
     self.stores.insert(&env::signer_account_id(), &data);
+
+    let data_menu = MenuObject {
+        id_tienda: env::signer_account_id().to_string(),
+        platillos: Vec::new(),
+    };
+    self.menus.push(data_menu);
     env::log(b"store Created");
     data
 }
@@ -142,32 +153,35 @@ pub fn get_store(&self, user_id: AccountId) -> StoreObject {
 }
 
 // funtions for get all stores
-pub fn get_all_stores(&self) -> StoreObject {
-    let store = self.stores.iter().map(|(_key, value)| value.clone()).collect();
+pub fn get_all_stores(&self) -> Vec<StoreObject> {
+    self.stores.iter().map(|(_key, value)| value.clone()).collect()
 }
 
-// funtions for menus
-pub fn set_menu(&mut self,
-    user_id:AccountId,
+// funtions for get all stores
+pub fn get_menu(&self, user_id: AccountId) -> MenuObject {
+    let index = self.menus.iter().position(|x| x.id_tienda == user_id.to_string()).expect("Menu no exists");
+    self.menus[index].clone()
+}
+// funtions for platillos
+pub fn set_platillo(&mut self,
     name: String,
     description: String,
-    category: String,
-    price: Balance,
+    category:String,
+    price: U128,
     img: String,
 ) -> MenuObject {
-    self.menu_id += 1;
-    let data = MenuObject {
-        id: self.menu_id,
-        user_id: user_id.to_string(),
-        name: name.to_string(),
-        description: description.to_string(),
-        category: category.to_string(),
-        price: price,
-        img: img.to_string(),
-    };
-    self.menus.insert(&env::signer_account_id(), &data);
+    let index = self.menus.iter().position(|x| x.id_tienda == env::signer_account_id()).expect("Menu no exists");
+    self.platillo_id += 1;
+    self.menus[index].platillos.push(PlatilloObject {
+        id: self.platillo_id,
+        name: name,
+        description: description,
+        category: category,
+        price: price.0,
+        img: img,
+    });
     env::log(b"Menu Created");
-    data
+    self.menus[index].clone()
 }
 
 // functions for categories
