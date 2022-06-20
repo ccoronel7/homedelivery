@@ -15,6 +15,7 @@ near_sdk::setup_alloc!();
 #[serde(crate = "near_sdk::serde")]
 //structs for Stores
 pub struct StoreObject {
+    owner_id: AccountId,
     name: String,
     address: String,
     phone: String,
@@ -89,6 +90,7 @@ impl Default for Contract {
 impl Contract {
 //functions for stores
 pub fn set_store(&mut self, 
+    owner_id: AccountId,
     name: String,
     address: String,
     phone: String,
@@ -100,6 +102,7 @@ pub fn set_store(&mut self,
         env::panic(b"store already exists");
     }
     let data = StoreObject {
+        owner_id: owner_id.to_string(),
         name: name,
         address: address,
         phone: phone,
@@ -118,6 +121,7 @@ pub fn set_store(&mut self,
 }
 
 pub fn put_store(&mut self,
+    owner_id: AccountId,
     name: String,
     address: String,
     phone: String,
@@ -125,6 +129,7 @@ pub fn put_store(&mut self,
     logo: String,
 ) -> StoreObject {
     let return_data = StoreObject {
+        owner_id: owner_id.clone(),
         name: name.clone(),
         address: address.clone(),
         phone: phone.clone(),
@@ -132,6 +137,7 @@ pub fn put_store(&mut self,
         logo: logo.clone(),
     };
     let mut store = self.stores.get(&env::signer_account_id()).expect("Store does not exist");
+    store.owner_id = owner_id;
     store.name = name;
     store.address = address;
     store.phone = phone;
@@ -144,6 +150,7 @@ pub fn put_store(&mut self,
 pub fn get_store(&self, user_id: AccountId) -> StoreObject {
     let store = self.stores.get(&user_id).expect("Store does not exist");
     StoreObject {
+        owner_id: store.owner_id,
         name: store.name,
         address: store.address,
         phone: store.phone,
