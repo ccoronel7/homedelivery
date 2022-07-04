@@ -203,6 +203,15 @@ pub fn set_platillo(&mut self,
     self.menus[index].clone()
 }
 
+pub fn delete_platillo(&mut self,
+    id: i128,
+) -> MenuObject {
+    let index = self.menus.iter().position(|x| x.id_tienda == env::signer_account_id()).expect("Menu no exists");
+    let i = self.menus[index].platillos.iter().position(|x| x.id == id).expect("Platillo no exists");
+    self.menus[index].platillos.remove(i)
+    env::log(b"platillo delete");
+}
+
 // functions for categories
 pub fn set_category(&mut self, name: String) -> CategoriesJson {      
     let category_id: i128 = (self.categories.len() + 1) as i128;
