@@ -150,8 +150,8 @@ pub fn put_store(&mut self,
     store.owner_id = owner_id;
     store.name = name;
     store.address = address;
-    strore.location = location;
-    strore.schedule = schedule;
+    store.location = location;
+    store.schedule = schedule;
     store.phone = phone;
     store.wallet = wallet;
     store.logo = logo;
@@ -165,6 +165,8 @@ pub fn get_store(&self, user_id: AccountId) -> StoreObject {
         owner_id: store.owner_id,
         name: store.name,
         address: store.address,
+        location: store.location,
+        schedule: store.schedule,
         phone: store.phone,
         wallet: store.wallet,
         logo: store.logo,
@@ -203,14 +205,14 @@ pub fn set_platillo(&mut self,
     self.menus[index].clone()
 }
 
-pub fn delete_platillo(&mut self,
-    id: i128,
-) -> MenuObject {
-    let index = self.menus.iter().position(|x| x.id_tienda == env::signer_account_id()).expect("Menu no exists");
-    let i = self.menus[index].platillos.iter().position(|x| x.id == id).expect("Platillo no exists");
-    self.menus[index].platillos.remove(i)
-    env::log(b"platillo delete");
-}
+// pub fn delete_platillo(&mut self,
+//     id: i128,
+// ) -> PlatilloObject {
+//     let index = self.menus.iter().position(|x| x.id_tienda == env::signer_account_id()).expect("Menu no exists");
+//     let i = self.menus[index].platillos.iter().position(|x| x.id == id).expect("Platillo no exists");
+//     self.menus[index].platillos.remove(i);
+//     env::log(b"platillo delete");
+// }
 
 // functions for categories
 pub fn set_category(&mut self, name: String) -> CategoriesJson {      
@@ -223,6 +225,7 @@ pub fn set_category(&mut self, name: String) -> CategoriesJson {
     env::log(b"category Created");
     data
 }
+
 pub fn put_category(&mut self, category_id: i128, name: String) -> CategoriesJson {
     let index = self.categories.iter().position(|x| x.id == category_id).expect("Category does not exist");
     self.categories[index].name = name.to_string();
