@@ -1,5 +1,5 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{env, near_bindgen, AccountId, Balance};
+use near_sdk::{env, near_bindgen, AccountId, Balance,Promise};
 use near_sdk::collections::{ UnorderedMap};
 use near_sdk::json_types::{U128};
 use serde::Serialize;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 // use near_sdk::json_types::ValidAccountId;
 //use near_sdk::env::is_valid_account_id;
 
-
+pub const VAULT_FEE: u128 = 500;
 near_sdk::setup_alloc!();
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
@@ -52,6 +52,20 @@ pub struct PlatilloObject {
     price: Balance,
     img: String,
 }
+
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+//structs for Menu
+pub struct OrdenObject {
+    id: i128,
+    amount: Balance,
+    id_tienda: AccountId,
+    id_user: AccountId,
+    id_delivery: AccountId,
+    confirmation_tienda: bool,
+    confirmation_user: bool,
+    status: bool,
+}
 //structs for categories
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
 #[serde(crate = "near_sdk::serde")]
@@ -72,6 +86,7 @@ pub struct Contract {
     menus: Vec<MenuObject>,
     categories: Vec<CategoriesJson>,
     platillo_id: i128,
+    ordenes: UnorderedMap<i128, OrdenObject>,
 }
 
 /// Initializing deafult impl
@@ -83,6 +98,7 @@ impl Default for Contract {
             categories: Vec::new(),
             menus: Vec::new(),
             platillo_id: 0,
+            ordenes: UnorderedMap::new(b"s".to_vec()),
         }
     }
 }
@@ -205,14 +221,14 @@ pub fn set_platillo(&mut self,
     self.menus[index].clone()
 }
 
-// pub fn delete_platillo(&mut self,
-//     id: i128,
-// ) -> PlatilloObject {
-//     let index = self.menus.iter().position(|x| x.id_tienda == env::signer_account_id()).expect("Menu no exists");
-//     let i = self.menus[index].platillos.iter().position(|x| x.id == id).expect("Platillo no exists");
-//     self.menus[index].platillos.remove(i);
-//     env::log(b"platillo delete");
-// }
+pub fn delete_platillo(&mut self,
+    id: i128,
+) {
+    let index = self.menus.iter().position(|x| x.id_tienda == env::signer_account_id()).expect("Menu no exists");
+    let i = self.menus[index].platillos.iter().position(|x| x.id == id).expect("Platillo no exists");
+    self.menus[index].platillos.remove(i);
+    env::log(b"platillo delete");
+}
 
 // functions for categories
 pub fn set_category(&mut self, name: String) -> CategoriesJson {      
@@ -244,5 +260,74 @@ pub fn get_category(&self, category_id: Option<i128>) -> Vec<CategoriesJson> {
         }).collect();
     }
     categories
+}
+
+#[payable]
+pub fn order_payment(
+    &mut self, 
+    id_orden: i128, 
+    id_tienda: AccountId,
+    id_delivery: AccountId,
+) -> OrdenObject {
+    //let initial_storage_usage = env::storage_usage();
+
+    let orden = self.ordenes.get(&id_orden);
+
+    let store = self.stores.get(&id_tienda);
+
+    if orden.is_some() {
+        env::panic(b"orden already exists");
+    }
+    if store.is_none() {
+        env::panic(b"store not exists");
+    }
+
+    let data = OrdenObject {
+        id: id_orden,
+        amount: env::attached_deposit(),
+        id_tienda: id_tienda,
+        id_user: env::signer_account_id().to_string(),
+        id_delivery: id_delivery,
+        confirmation_tienda: false,
+        confirmation_user: false,
+        status: false,
+    };
+    self.ordenes.insert(&id_orden, &data);
+
+    data
+}
+
+pub fn delivery_confirmation(
+    &mut self, 
+    id_orden: i128, 
+    amount_delivery: U128,
+) -> OrdenObject {
+    let mut orden = self.ordenes.get(&id_orden).expect("Order does not exist");
+
+    if orden.status == false {
+        if orden.id_tienda == env::signer_account_id().to_string() {
+            orden.confirmation_tienda = true;
+        }
+        if orden.id_user == env::signer_account_id().to_string() {
+            orden.confirmation_user = true;
+        }
+    
+        if orden.confirmation_tienda == true && orden.confirmation_user == true {
+            let price_store = orden.amount - amount_delivery.0;
+            let for_vault = price_store as u128 * VAULT_FEE / 10_000u128;
+            let price_deducted = price_store - for_vault;
+
+            Promise::new(orden.id_tienda.to_string()).transfer(price_deducted);
+            Promise::new(orden.id_delivery.clone()).transfer(amount_delivery.0);
+
+            orden.status = true;
+        }
+
+        self.ordenes.insert(&id_orden, &orden);
+
+        orden
+    } else {
+        env::panic(b"order already delivered");
+    }
 }
 }
